@@ -1,0 +1,122 @@
+<html>
+<head>
+    <style>
+        #colorindicator {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #000;
+        }
+    </style>
+    <script src="./lib/color-thief.js"></script>
+</head>
+<body>
+<main>
+    <div id="video_container">
+        <video id="video" src="test.mp4" controls></video>
+        <div>
+            <canvas id="canvas"></canvas>
+            <div id="colorindicator"></div>
+        </div>
+    </div>
+    <div class="control slider">
+        <input type="range" min="1" max="30" value="1" class="slider" id="accuracy">
+        <div id="accuracyvalue">1</div>
+    </div>
+    <select id="inputportselector">
+        <option>None</option>
+    </select>
+</main>
+</body>
+<script>
+    const colorThief = new ColorThief();
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('video');
+    let speed = 1;
+    const accuracy = document.getElementById('accuracy');
+    const accuracyvalue = document.getElementById('accuracyvalue');
+    const colorindicator = document.getElementById('colorindicator');
+
+    accuracy.addEventListener('change', function () {
+        speed = accuracy.value;
+        accuracyvalue.innerText = speed
+    })
+
+    // set canvas size = video size when known
+    video.addEventListener('loadedmetadata', function () {
+        canvas.width = video.videoWidth / 3;
+        canvas.height = video.videoHeight / 3;
+    })
+
+    video.addEventListener('play', function () {
+        var $this = this;
+        (function loop() {
+            if (!$this.paused && !$this.ended) {
+                ctx.drawImage($this, 0, 0);
+                setTimeout(loop, 1000 / 30);
+            }
+
+        })();
+    }, 0);
+
+    video.addEventListener('play', function () {
+
+        var $this = this;
+        (function getColor() {
+            if (!$this.paused && !$this.ended) {
+                setTimeout(getColor, 1000 / speed);
+            }
+
+            var averageColor = colorThief.getColor(canvas);
+            colorindicator.style.backgroundColor = 'rgb(' + averageColor[0] + ',' + averageColor[1] + ',' + averageColor[2] + ')'
+            console.log(averageColor)
+
+        })();
+    }, 0);
+
+    if (navigator.requestMIDIAccess) {
+        console.log('This browser supports WebMIDI!');
+    } else {
+        console.log('WebMIDI is not supported in this browser.');
+    }
+
+    navigator.requestMIDIAccess()
+        .then(onMIDISuccess, onMIDIFailure);
+
+    function onMIDISuccess(midiAccess) {
+        console.log(midiAccess);
+
+        //let inputs = midiAccess.inputs;
+        //let outputs = midiAccess.outputs;
+        listInputsAndOutputs(midiAccess)
+    }
+
+    function onMIDIFailure() {
+        console.log('Could not access your MIDI devices.');
+    }
+
+    function listInputsAndOutputs(midiAccess) {
+        for (const entry of midiAccess.inputs) {
+            const input = entry[1];
+            console.log(
+                `Input port [type:'${input.type}'] id:'${input.id}' manufacturer: '${input.manufacturer}' name: '${input.name}' version: '${input.version}'`,
+            );
+        }
+
+        for (const entry of midiAccess.outputs) {
+            const output = entry[1];
+            console.log(
+                `Output port [type:'${output.type}'] id: '${output.id}' manufacturer: '${output.manufacturer}' name: '${output.name}' version: '${output.version}'`,
+            );
+        }
+
+        midiAccess.outputs.forEach((port, key) => {
+            const opt = document.createElement("option");
+            opt.text = port.name;
+            document.getElementById("inputportselector").add(opt);
+        });
+    }
+
+</script>
+</html>
